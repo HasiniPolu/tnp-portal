@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Attendance - T&P Portal</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:#0b1f3a;color:white;display:flex;min-height:100vh;}
+.sidebar{width:230px;background:#08172d;padding:25px 15px;display:flex;flex-direction:column;gap:8px;position:fixed;height:100vh;overflow-y:auto;}
+.sidebar h2{font-size:18px;letter-spacing:1px;padding:10px 10px 20px;border-bottom:1px solid #1e3a6e;margin-bottom:10px;}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;color:#aac;text-decoration:none;font-size:14px;transition:0.3s;}
+.sidebar a:hover,.sidebar a.active{background:#ff7a00;color:white;}
+.sidebar .spacer{flex:1;}
+.sidebar .logout{color:#ff4444;cursor:pointer;padding:11px 14px;border-radius:10px;font-size:14px;display:flex;align-items:center;gap:10px;margin-top:auto;}
+.sidebar .logout:hover{background:#1e0000;}
+.main{margin-left:230px;flex:1;padding:30px;overflow-y:auto;}
+h1{font-size:24px;margin-bottom:30px;}
+.section-title{font-size:18px;margin:25px 0 15px;border-left:4px solid #ff7a00;padding-left:12px;}
+.form-card{background:#122c52;border-radius:14px;padding:25px;margin-bottom:25px;}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px;}
+input,select{width:100%;padding:11px;border-radius:8px;border:none;outline:none;background:#0b1f3a;color:white;font-size:14px;}
+input::placeholder{color:#666;}
+input:focus,select:focus{background:#1a2f4a;border:1px solid #ff7a00;}
+.btn{padding:11px 24px;background:#ff7a00;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:0.3s;}
+.btn:hover{background:#ff8f1f;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.msg{margin-top:10px;font-size:13px;padding:12px;border-radius:6px;display:none;}
+.msg.show{display:block;}
+.msg.success{background:rgba(0,230,118,0.15);color:#00e676;border-left:3px solid #00e676;}
+.msg.error{background:rgba(255,68,68,0.15);color:#ff4444;border-left:3px solid #ff4444;}
+.msg.loading{background:rgba(255,122,0,0.15);color:#ff7a00;border-left:3px solid #ff7a00;}
+.msg.info{background:rgba(100,150,255,0.15);color:#64b5ff;border-left:3px solid #64b5ff;}
+.table-wrap{background:#122c52;border-radius:14px;overflow:hidden;margin-bottom:25px;}
+table{width:100%;border-collapse:collapse;}
+th{background:#0d2244;padding:13px 16px;text-align:left;font-size:13px;color:#aac;font-weight:600;}
+td{padding:12px 16px;font-size:14px;border-top:1px solid #1e3a6e;}
+tr:hover td{background:#0d2244;}
+.badge{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block;}
+.badge.present{background:rgba(0,230,118,0.15);color:#00e676;}
+.badge.absent{background:rgba(255,68,68,0.15);color:#ff4444;}
+.badge.leave{background:rgba(255,193,7,0.15);color:#ffc107;}
+.admin-only{display:none;}
+.debug-info{background:#0d2244;padding:12px;border-radius:6px;margin-top:10px;font-size:11px;color:#64b5ff;display:none;border-left:3px solid #64b5ff;}
+.debug-info.show{display:block;}
+.loading-spinner{display:inline-block;width:12px;height:12px;border:2px solid #ff7a00;border-top:2px solid transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:5px;}
+@keyframes spin{to{transform:rotate(360deg);}}}
+.no-data{text-align:center;color:#aac;padding:40px 20px;}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>📋 T&P Portal</h2>
+  <a href="dashboard.html">🏠 Dashboard</a>
+  <a href="courses.html">📚 Courses</a>
+  <a href="attendance.html" class="active">📋 Attendance</a>
+  <a href="projects.html">💼 Projects</a>
+  <a href="certification.html">🏆 Certifications</a>
+  <a href="remarks.html">📝 Remarks</a>
+  <a href="reports.html">📊 Reports</a>
+  <div class="spacer"></div>
+  <div class="logout" onclick="logout()">🚪 Logout</div>
+</div>
+
+<div class="main">
+  <h1>Attendance 📋</h1>
+
+  <!-- ADMIN: Mark Attendance -->
+  <div class="admin-only" id="markSection">
+    <div class="section-title">Mark Attendance</div>
+    <div class="form-card">
+      <div class="form-row">
+        <select id="attStudent">
+          <option value="">📌 Select Student</option>
+        </select>
+        <select id="attCourse">
+          <option value="">📚 Select Course (Optional)</option>
+        </select>
+        <input id="attDate" type="date" placeholder="Select Date">
+        <select id="attStatus">
+          <option value="">📊 Select Status</option>
+          <option value="present">✅ Present</option>
+          <option value="absent">❌ Absent</option>
+          <option value="leave">🎯 Leave</option>
+        </select>
+      </div>
+      <button class="btn" id="markBtn" onclick="markAttendance()">✅ Mark Attendance</button>
+      <div class="msg" id="attMsg"></div>
+      <div class="debug-info" id="debugInfo"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Attendance Records</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th id="studentColHead">Student</th>
+          <th id="courseColHead">Course</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="attTable">
+        <tr><td colspan="4" style="text-align:center;color:#aac;"><span class="loading-spinner"></span>Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+// Check if config.js loaded properly
+if(typeof BASE_URL === 'undefined') {
+  console.error("❌ BASE_URL not defined. Check config.js");
+  document.body.innerHTML += "<div style='color:red;padding:20px;'>Error: config.js not loaded properly</div>";
+}
+
+const user = JSON.parse(localStorage.getItem("user") || "null");
+const token = localStorage.getItem("token");
+
+console.log("👤 User:", user);
+console.log("🔑 Token exists:", !!token);
+
+if(!user || !token) { 
+  console.error("❌ No user or token found");
+  window.location.href="index.html"; 
+}
+
+// Initialize based on role
+if(user.role==="admin"){
+  console.log("👨‍💼 Admin user detected");
+  document.querySelectorAll(".admin-only").forEach(e=>e.style.display="block");
+  loadStudents();
+  loadAllAttendance();
+} else {
+  console.log("🎓 Student user detected");
+  document.getElementById("studentColHead").style.display="none";
+  document.getElementById("courseColHead").style.display="none";
+  loadMyAttendance();
+}
+
+function authHeader(){ 
+  return {
+    "Content-Type":"application/json",
+    "Authorization":"Bearer "+token
+  }; 
+}
+
+function showMsg(msg, type = "info") {
+  const msgEl = document.getElementById("attMsg");
+  msgEl.textContent = msg;
+  msgEl.className = "msg show " + type;
+  console.log(`📢 [${type.toUpperCase()}]`, msg);
+}
+
+function showDebug(msg) {
+  const debug = document.getElementById("debugInfo");
+  if(debug) {
+    debug.innerHTML = "<strong>🐛 Debug:</strong> " + msg;
+    debug.classList.add("show");
+  }
+  console.log("🐛", msg);
+}
+
+function hideMsg() {
+  const msgEl = document.getElementById("attMsg");
+  msgEl.className = "msg";
+}
+
+function loadStudents(){
+  console.log("📥 Loading students...");
+  showDebug("Fetching students from " + BASE_URL + "/auth/users");
+  
+  fetch(BASE_URL+"/auth/users", { headers: authHeader() })
+  .then(r=>{
+    console.log("📨 Students response status:", r.status);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data=>{
+    console.log("✅ Students data:", data);
+    const sel = document.getElementById("attStudent");
+    
+    if(data.users && Array.isArray(data.users)) {
+      const students = data.users.filter(u=>u.role==="student");
+      console.log(`📊 Found ${students.length} students`);
+      
+      students.forEach(u=>{
+        if(u._id && u.name) {
+          sel.innerHTML += `<option value="${u._id}">${u.name}</option>`;
+        }
+      });
+      showDebug(`✅ Loaded ${students.length} students`);
+    } else {
+      console.warn("⚠️ No users array in response");
+      showDebug("⚠️ Unexpected response format for users");
+    }
+  })
+  .catch(err=>{ 
+    console.error("❌ Error loading students:", err);
+    showDebug("❌ Students Error: " + err.message);
+  });
+
+  console.log("📥 Loading courses...");
+  showDebug("Fetching courses from " + BASE_URL + "/courses");
+  
+  fetch(BASE_URL+"/courses", { headers: authHeader() })
+  .then(r=>{
+    console.log("📨 Courses response status:", r.status);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data=>{
+    console.log("✅ Courses data:", data);
+    const sel = document.getElementById("attCourse");
+    
+    if(data.courses && Array.isArray(data.courses)) {
+      console.log(`📊 Found ${data.courses.length} courses`);
+      data.courses.forEach(c=>{
+        if(c._id && c.title) {
+          sel.innerHTML += `<option value="${c._id}">${c.title}</option>`;
+        }
+      });
+      showDebug(`✅ Loaded ${data.courses.length} courses`);
+    } else {
+      console.warn("⚠️ No courses array in response");
+      showDebug("⚠️ Unexpected response format for courses");
+    }
+  })
+  .catch(err=>{ 
+    console.error("❌ Error loading courses:", err);
+    showDebug("❌ Courses Error: " + err.message);
+  });
+}
+
+function markAttendance(){
+  const studentId = document.getElementById("attStudent").value;
+  const courseId = document.getElementById("attCourse").value;
+  const date = document.getElementById("attDate").value;
+  const status = document.getElementById("attStatus").value;
+
+  const body = {
+    studentId: studentId,
+    courseId: courseId || null,
+    date: date,
+    status: status
+  };
+
+  console.log("📝 Marking attendance:", body);
+  showDebug("Sending: " + JSON.stringify(body));
+
+  // Validation
+  if(!studentId || !date || !status) { 
+    showMsg("⚠️ Please fill: Student, Date, and Status", "error");
+    showDebug("❌ Validation failed - missing required fields");
+    return; 
+  }
+
+  showMsg("⏳ Marking attendance...", "loading");
+  document.getElementById("markBtn").disabled = true;
+
+  fetch(BASE_URL+"/attendance", { 
+    method:"POST", 
+    headers: authHeader(), 
+    body: JSON.stringify(body) 
+  })
+  .then(r=>{
+    console.log("📨 Mark attendance response status:", r.status);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data=>{
+    console.log("📦 Response:", data);
+    showDebug("Response: " + JSON.stringify(data));
+    document.getElementById("markBtn").disabled = false;
+
+    if(data.success){ 
+      showMsg("✅ " + (data.message || "Attendance marked successfully"), "success");
+      
+      // Clear form
+      document.getElementById("attStudent").value = "";
+      document.getElementById("attCourse").value = "";
+      document.getElementById("attDate").value = "";
+      document.getElementById("attStatus").value = "";
+      
+      // Reload after delay
+      setTimeout(() => {
+        hideMsg();
+        loadAllAttendance();
+      }, 1500);
+    }
+    else { 
+      showMsg("❌ " + (data.message || "Failed to mark attendance"), "error");
+      showDebug("Server error: " + (data.message || "Unknown error"));
+    }
+  })
+  .catch(err=>{ 
+    console.error("❌ Fetch error:", err);
+    document.getElementById("markBtn").disabled = false;
+    showMsg("❌ Server error: " + err.message, "error");
+    showDebug("Fetch error: " + err.message);
+  });
+}
+
+function loadAllAttendance(){
+  console.log("📋 Loading all attendance...");
+  showDebug("Fetching from " + BASE_URL + "/attendance");
+  
+  fetch(BASE_URL+"/attendance", { headers: authHeader() })
+  .then(r=>{
+    console.log("📨 Response status:", r.status);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data=>{
+    console.log("✅ Attendance data:", data);
+    renderTable(data);
+  })
+  .catch(err=>{
+    console.error("❌ Error loading attendance:", err);
+    showDebug("Error: " + err.message);
+    renderTable({records: [], error: err.message});
+  });
+}
+
+function loadMyAttendance(){
+  console.log("📋 Loading my attendance...");
+  showDebug("Fetching from " + BASE_URL + "/attendance/my");
+  
+  fetch(BASE_URL+"/attendance/my", { headers: authHeader() })
+  .then(r=>{
+    console.log("📨 Response status:", r.status);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(data=>{
+    console.log("✅ My attendance data:", data);
+    renderTable(data);
+  })
+  .catch(err=>{
+    console.error("❌ Error loading my attendance:", err);
+    showDebug("Error: " + err.message);
+    renderTable({records: [], error: err.message});
+  });
+}
+
+function renderTable(data){
+  const tbody = document.getElementById("attTable");
+  const records = data.records || [];
+  
+  console.log("🎨 Rendering", records.length, "records");
+
+  if(records.length > 0){
+    tbody.innerHTML = records.map((r, idx) => {
+      try {
+        const dateStr = new Date(r.date).toLocaleDateString('en-IN');
+        return `
+          <tr>
+            <td>${dateStr}</td>
+            <td>${r.studentName || user.name || "N/A"}</td>
+            <td>${r.courseTitle || "N/A"}</td>
+            <td><span class="badge ${r.status}">${r.status}</span></td>
+          </tr>`;
+      } catch(e) {
+        console.error("Error rendering row", idx, e);
+        return `<tr><td colspan="4" style="color:#ff4444;">Error rendering row</td></tr>`;
+      }
+    }).join("");
+    showDebug(`✅ Rendered ${records.length} records`);
+  } else {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="no-data">📭 No attendance records found</div></td></tr>`;
+    showDebug("No records to display");
+  }
+}
+
+function logout(){
+  localStorage.removeItem("user"); 
+  localStorage.removeItem("token"); 
+  window.location.href="index.html";
+}
+
+// Auto-refresh every 30 seconds (reduced frequency)
+let refreshInterval = setInterval(() => {
+  console.log("🔄 Auto-refreshing attendance...");
+  if(user && user.role==="admin") loadAllAttendance();
+  else if(user) loadMyAttendance();
+}, 30000);
+
+console.log("✅ Page loaded successfully");
+</script>
+</body>
+</html>

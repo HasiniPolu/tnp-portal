@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reports - T&P Portal</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:#0b1f3a;color:white;display:flex;min-height:100vh;}
+.sidebar{width:230px;background:#08172d;padding:25px 15px;display:flex;flex-direction:column;gap:8px;position:fixed;height:100vh;}
+.sidebar h2{font-size:18px;letter-spacing:1px;padding:10px 10px 20px;border-bottom:1px solid #1e3a6e;margin-bottom:10px;}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;color:#aac;text-decoration:none;font-size:14px;transition:0.3s;}
+.sidebar a:hover,.sidebar a.active{background:#ff7a00;color:white;}
+.sidebar .spacer{flex:1;}
+.sidebar .logout{color:#ff4444;cursor:pointer;padding:11px 14px;border-radius:10px;font-size:14px;display:flex;align-items:center;gap:10px;}
+.sidebar .logout:hover{background:#1e0000;}
+.main{margin-left:230px;flex:1;padding:30px;}
+.section-title{font-size:18px;margin:25px 0 15px;border-left:4px solid #ff7a00;padding-left:12px;}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;margin-bottom:30px;}
+.stat-card{background:#122c52;border-radius:14px;padding:20px;text-align:center;}
+.stat-card .num{font-size:36px;font-weight:700;color:#ff7a00;}
+.stat-card .label{font-size:13px;color:#aac;margin-top:5px;}
+.table-wrap{background:#122c52;border-radius:14px;overflow:hidden;margin-bottom:25px;}
+table{width:100%;border-collapse:collapse;}
+th{background:#0d2244;padding:13px 16px;text-align:left;font-size:13px;color:#aac;}
+td{padding:12px 16px;font-size:14px;border-top:1px solid #1e3a6e;}
+tr:hover td{background:#0d2244;}
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.progress-bar{background:#0b1f3a;border-radius:20px;height:8px;overflow:hidden;}
+.progress-fill{background:#ff7a00;height:100%;border-radius:20px;transition:width 0.5s;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h2>📊 T&P Portal</h2>
+  <a href="dashboard.html">🏠 Dashboard</a>
+  <a href="courses.html">📚 Courses</a>
+  <a href="attendance.html">📋 Attendance</a>
+  <a href="projects.html">💼 Projects</a>
+  <a href="certification.html">🏆 Certifications</a>
+  <a href="remarks.html">📝 Remarks</a>
+  <a href="reports.html" class="active">📊 Reports</a>
+  <div class="spacer"></div>
+  <div class="logout" onclick="logout()">🚪 Logout</div>
+</div>
+<div class="main">
+  <h1 style="font-size:24px;margin-bottom:30px;">Reports 📊</h1>
+ 
+  <div class="stats">
+    <div class="stat-card"><div class="num" id="rCourses">0</div><div class="label">Courses</div></div>
+    <div class="stat-card"><div class="num" id="rAttPct">0%</div><div class="label">My Attendance</div></div>
+    <div class="stat-card"><div class="num" id="rProjects">0</div><div class="label">Projects</div></div>
+    <div class="stat-card"><div class="num" id="rCerts">0</div><div class="label">Certifications</div></div>
+  </div>
+ 
+  <div class="section-title">Attendance Summary by Course</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Course</th><th>Present</th><th>Absent</th><th>%</th><th>Progress</th></tr></thead>
+      <tbody id="attSummary"><tr><td colspan="5" style="text-align:center;color:#aac;">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+<script src="config.js"></script>
+<script>
+const user = JSON.parse(localStorage.getItem("user"));
+const token = localStorage.getItem("token");
+if(!user){ window.location.href="index.html"; }
+function authHeader(){ return {"Content-Type":"application/json","Authorization":"Bearer "+token}; }
+ 
+Promise.all([
+  fetch(BASE_URL+"/courses/my", { headers: authHeader() }).then(r=>r.json()),
+  fetch(BASE_URL+"/attendance/my", { headers: authHeader() }).then(r=>r.json()),
+  fetch(BASE_URL+"/projects/my", { headers: authHeader() }).then(r=>r.json()),
+  fetch(BASE_URL+"/projects/certifications/my", { headers: authHeader() }).then(r=>r.json())
+]).then(([courses, att, projects, certs])=>{
+  document.getElementById("rCourses").textContent = (courses.courses||[]).length;
+  document.getElementById("rProjects").textContent = (projects.projects||[]).length;
+  document.getElementById("rCerts").textContent = (certs.certifications||[]).length;
+ 
+  const records = att.records || [];
+  if(records.length){
+    const present = records.filter(r=>r.status==="present").length;
+    document.getElementById("rAttPct").textContent = Math.round((present/records.length)*100)+"%";
+ 
+    // Group by course
+    const byC = {};
+    records.forEach(r=>{
+      const key = r.courseTitle||"Unknown";
+      if(!byC[key]) byC[key]={present:0,absent:0};
+      if(r.status==="present") byC[key].present++;
+      else byC[key].absent++;
+    });
+ 
+    document.getElementById("attSummary").innerHTML = Object.entries(byC).map(([c,v])=>{
+      const total = v.present+v.absent;
+      const pct = Math.round((v.present/total)*100);
+      return `<tr>
+        <td>${c}</td>
+        <td style="color:#00e676">${v.present}</td>
+        <td style="color:#ff4444">${v.absent}</td>
+        <td>${pct}%</td>
+        <td style="min-width:100px"><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></td>
+      </tr>`;
+    }).join("");
+  }
+}).catch(()=>{});
+ 
+function logout(){ localStorage.removeItem("user"); localStorage.removeItem("token"); window.location.href="index.html"; }
+</script>
+</body>
+</html>

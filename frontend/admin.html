@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin - T&P Portal</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:#0b1f3a;color:white;display:flex;min-height:100vh;}
+.sidebar{width:230px;background:#08172d;padding:25px 15px;display:flex;flex-direction:column;gap:8px;position:fixed;height:100vh;overflow-y:auto;border-right:1px solid #1e3a6e;}
+.sidebar h2{font-size:18px;letter-spacing:1px;padding:10px 10px 20px;border-bottom:1px solid #1e3a6e;margin-bottom:10px;}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;color:#aac;text-decoration:none;font-size:14px;transition:0.3s;cursor:pointer;}
+.sidebar a:hover,.sidebar a.active{background:#ff7a00;color:white;}
+.sidebar .spacer{flex:1;}
+.sidebar .logout{color:#ff4444;cursor:pointer;padding:11px 14px;border-radius:10px;font-size:14px;display:flex;align-items:center;gap:10px;}
+.main{margin-left:230px;flex:1;padding:30px;}
+.section{display:none;}
+.section.active{display:block;}
+.table-wrap{background:#122c52;border-radius:14px;overflow:hidden;margin-bottom:25px;}
+table{width:100%;border-collapse:collapse;}
+th,td{padding:12px;border-top:1px solid #1e3a6e;font-size:14px;}
+th{background:#0d2244;color:#aac;text-align:left;font-weight:600;}
+.btn{padding:8px 14px;background:#ff7a00;border:none;color:white;cursor:pointer;border-radius:6px;font-size:13px;margin:3px 2px;}
+.btn:hover{background:#e06b00;}
+.btn-danger{background:#c0392b;}
+.btn-danger:hover{background:#a93226;}
+.btn-sm{padding:5px 10px;font-size:12px;}
+input,select,textarea{padding:9px 12px;border-radius:6px;border:1px solid #1e3a6e;background:#0d2244;color:white;margin:4px 4px 4px 0;font-size:14px;outline:none;}
+input:focus,select:focus,textarea:focus{border-color:#ff7a00;}
+textarea{min-height:80px;resize:vertical;width:100%;max-width:500px;}
+select option{background:#0d2244;}
+.form-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;}
+.section-title{font-size:20px;font-weight:700;margin-bottom:20px;}
+.sub-title{font-size:13px;font-weight:600;color:#aac;margin:18px 0 10px;text-transform:uppercase;letter-spacing:1px;}
+.stat-cards{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px;}
+.card{background:#122c52;border-radius:12px;padding:20px 28px;min-width:140px;}
+.card h4{font-size:12px;color:#aac;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;}
+.card span{font-size:30px;font-weight:700;color:#ff7a00;}
+.msg{padding:9px 14px;border-radius:8px;margin:8px 0;font-size:13px;display:none;}
+.msg.success{background:#0d3b26;color:#66ffaa;display:block;}
+.msg.error{background:#3b0d0d;color:#ff8888;display:block;}
+.badge{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block;}
+.badge.present{background:#0d3b26;color:#66ffaa;}
+.badge.absent{background:#3b0d0d;color:#ff8888;}
+.badge.leave{background:#2a2a0d;color:#ffee66;}
+.empty-row td{text-align:center;color:#556;padding:20px;}
+.hidden{display:none;}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>🎓 T&P Admin</h2>
+  <a id="nav-dashboard"  onclick="showSection('dashboard')">📊 Dashboard</a>
+  <a id="nav-users"      onclick="showSection('users')">👤 Users</a>
+  <a id="nav-courses"    onclick="showSection('courses')">📚 Courses</a>
+  <a id="nav-attendance" onclick="showSection('attendance')">📅 Attendance</a>
+  <a id="nav-remarks"    onclick="showSection('remarks')">💬 Remarks</a>
+  <a id="nav-projects"   onclick="showSection('projects')">🚀 Projects</a>
+  <a id="nav-certifications" onclick="showSection('certifications')">🏆 Certifications</a>
+  <a id="nav-reports"    onclick="showSection('reports')">📄 Reports</a>
+  <div class="spacer"></div>
+  <div class="logout" onclick="logout()">🚪 Logout</div>
+</div>
+
+<div class="main">
+
+  <p id="adminEmail" style="color:#aac;font-size:13px;margin-bottom:18px;"></p>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div id="dashboard" class="section active">
+    <div class="section-title">Dashboard</div>
+    <div class="stat-cards">
+      <div class="card"><h4>Total Users</h4><span id="totalUsers">—</span></div>
+      <div class="card"><h4>Students</h4><span id="totalStudents">—</span></div>
+      <div class="card"><h4>Courses</h4><span id="totalCourses">—</span></div>
+      <div class="card"><h4>Attendance</h4><span id="totalAttendance">—</span></div>
+      <div class="card"><h4>Remarks</h4><span id="totalRemarks">—</span></div>
+    </div>
+  </div>
+
+  <!-- ===== USERS — UNTOUCHED ===== -->
+  <div id="users" class="section">
+    <div class="section-title">Users</div>
+    <div class="sub-title">Add User</div>
+    <div class="form-row">
+      <input id="newName" placeholder="Name">
+      <input id="newEmail" placeholder="Email">
+      <input id="newPassword" placeholder="Password" type="password">
+      <input id="newRollNo" placeholder="RollNo">
+      <input id="newBranch" placeholder="Branch">
+      <select id="newRole">
+        <option value="student">Student</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="btn" onclick="addUser()">Add</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== COURSES ===== -->
+  <div id="courses" class="section">
+    <div class="section-title">Courses</div>
+    <div class="sub-title">Add Course</div>
+    <!--
+      FIX: courseRoutes.js is mounted at /api/courses (NOT /api/admin/courses)
+      FIX: Course model fields are title, instructor, duration, description — NOT name/code
+    -->
+    <div class="form-row">
+      <input id="newCourseTitle"      placeholder="Course Title">
+      <input id="newCourseInstructor" placeholder="Instructor">
+      <input id="newCourseDuration"   placeholder="Duration (e.g. 8 weeks)">
+    </div>
+    <div class="form-row">
+      <textarea id="newCourseDesc" placeholder="Description (optional)" style="max-width:460px;min-height:55px;"></textarea>
+    </div>
+    <button class="btn" onclick="addCourse()">Add Course</button>
+    <div id="courseMsg" class="msg"></div>
+    <div class="table-wrap" style="margin-top:14px;">
+      <table>
+        <thead><tr><th>Title</th><th>Instructor</th><th>Duration</th><th>Action</th></tr></thead>
+        <tbody id="coursesTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== ATTENDANCE ===== -->
+ <div id="attendance" class="section">
+  <div class="section-title">Attendance</div>
+
+  <div class="sub-title">Mark Attendance</div>
+  <div class="form-row">
+    <select id="attendanceStudent"></select>
+    <select id="attendanceCourse"></select> <!-- ✅ NEW -->
+    <input type="date" id="attendanceDate">
+
+    <button class="btn" onclick="markAttendance('present')">✔ Present</button>
+    <button class="btn btn-danger" onclick="markAttendance('absent')">✘ Absent</button>
+    <button class="btn" style="background:#7a5500;" onclick="markAttendance('leave')">⚑ Leave</button>
+  </div>
+
+  <div id="attendanceMsg" class="msg"></div>
+
+  <div class="sub-title">Attendance History</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Course</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="attendanceTable"></tbody>
+    </table>
+  </div>
+</div>
+
+  <!-- ===== REMARKS ===== -->
+  <div id="remarks" class="section">
+    <div class="section-title">Remarks</div>
+    <div class="sub-title">Add Remark</div>
+    <!--
+      FIX: POST/GET to /api/admin/remarks
+      FIX: GET returns { success, remarks:[{studentId:{name,rollNo}, text, date}] }
+    -->
+    <div class="form-row">
+      <select id="remarkStudent"></select>
+      <input type="date" id="remarkDate">
+    </div>
+    <div class="form-row">
+      <textarea id="remarkText" placeholder="Enter remark for this student..."></textarea>
+    </div>
+    <button class="btn" onclick="addRemark()">Submit Remark</button>
+    <div id="remarkMsg" class="msg"></div>
+    <div class="sub-title">Remarks History</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Student</th><th>Roll No</th><th>Remark</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="remarksTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== REPORTS ===== -->
+  <div id="reports" class="section">
+    <div class="section-title">Reports</div>
+    <div class="sub-title">Generate Report</div>
+    <!--
+      FIX: GET /api/admin/reports?type=...
+      FIX: returns { success, report:{ columns:[], data:[] } }
+      FIX: build table dynamically from columns + Object.values(row)
+    -->
+    <div class="form-row">
+      <select id="reportType">
+        <option value="">-- Select Report Type --</option>
+        <option value="attendance">Attendance Report</option>
+        <option value="enrollment">Enrollment Report</option>
+        <option value="performance">Performance Report</option>
+        <option value="certification">Certification Report</option>
+      </select>
+      <button class="btn" onclick="loadReport()">Generate</button>
+    </div>
+    <div id="reportMsg" class="msg"></div>
+    <div class="table-wrap" style="margin-top:14px;">
+      <table>
+        <thead id="reportHead"></thead>
+        <tbody id="reportBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== PROJECTS ===== -->
+  <div id="projects" class="section">
+    <div class="section-title">Projects</div>
+    <div class="sub-title">Student Projects Submissions</div>
+    <div id="projectMsg" class="msg"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Roll No</th>
+            <th>Project Title</th>
+            <th>Technologies</th>
+            <th>Link</th>
+            <th>Description</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="projectsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== CERTIFICATIONS ===== -->
+  <div id="certifications" class="section">
+    <div class="section-title">Certifications</div>
+    <div class="sub-title">Student Certifications</div>
+    <div id="certMsg" class="msg"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Roll No</th>
+            <th>Course</th>
+            <th>Certificate No</th>
+            <th>Grade</th>
+            <th>Issued Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="certificationsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /.main -->
+
+<script>
+const BASE_URL = "http://localhost:5000/api";
+let token = null;
+
+// ===================== INIT =====================
+function init() {
+  const user = JSON.parse(localStorage.getItem("user"));
+  token = localStorage.getItem("token");
+  if (!user || !token) { alert("Login first"); location.href = "../index.html"; return; }
+  document.getElementById("adminEmail").innerText = "Logged in as: " + user.email;
+  loadDashboard();
+}
+
+function authHeader() {
+  return { "Content-Type": "application/json", "Authorization": "Bearer " + token };
+}
+
+// ===================== HELPERS =====================
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = "msg " + type;
+  el.innerText = text;
+  setTimeout(() => { el.className = "msg"; el.innerText = ""; }, 3500);
+}
+
+function emptyRow(colspan, msg) {
+  return `<tr class="empty-row"><td colspan="${colspan}">${msg || "No records found"}</td></tr>`;
+}
+
+// ===================== NAV =====================
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const nav = document.getElementById('nav-' + id);
+  if (nav) nav.classList.add('active');
+
+  if (id === "dashboard")  loadDashboard();
+  if (id === "users")      loadUsers();
+  if (id === "courses")    loadCourses();
+  if (id === "attendance") {
+  loadStudentsInto("attendanceStudent");
+  loadCoursesIntoAttendance(); // ✅ FIXED: was loadCoursesInto
+  loadAttendance();
+}
+  if (id === "remarks")    { loadStudentsInto("remarkStudent"); loadRemarks(); }
+  if (id === "projects")   loadProjects();
+  if (id === "certifications") loadCertifications();
+  if (id === "reports") {
+    document.getElementById("reportHead").innerHTML = "";
+    document.getElementById("reportBody").innerHTML = emptyRow(1, "Select a report type and click Generate");
+  }
+}
+
+// ===================== DASHBOARD =====================
+// Uses /api/admin/stats which returns all counts in one call
+function loadDashboard() {
+  fetch(BASE_URL + "/admin/stats", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      console.log("STATS RESPONSE:", d); // 👈 ADD THIS
+
+      if (d.success && d.stats) {
+        document.getElementById("totalUsers").innerText      = d.stats.users;
+        document.getElementById("totalStudents").innerText   = d.stats.students;
+        document.getElementById("totalCourses").innerText    = d.stats.courses;
+        document.getElementById("totalAttendance").innerText = d.stats.attendance;
+        document.getElementById("totalRemarks").innerText    = d.stats.remarks;
+      }
+    })
+    .catch(err => console.log(err));
+}
+
+// ===================== USERS — UNTOUCHED =====================
+function loadUsers() {
+  fetch(BASE_URL + "/admin/users", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      const users = d.users || [];
+      document.getElementById("usersTable").innerHTML = users.length
+        ? users.map(u => `
+            <tr>
+              <td>${u.name || ""}</td>
+              <td>${u.email || ""}</td>
+              <td>${u.role || ""}</td>
+              <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}')">Delete</button></td>
+            </tr>`).join("")
+        : emptyRow(4);
+    });
+}
+
+function addUser() {
+  fetch(BASE_URL + "/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name:     document.getElementById("newName").value,
+      email:    document.getElementById("newEmail").value,
+      password: document.getElementById("newPassword").value,
+      role:     document.getElementById("newRole").value,
+      rollNo:   document.getElementById("newRollNo").value,
+      branch:   document.getElementById("newBranch").value
+    })
+  }).then(() => loadUsers());
+}
+
+function deleteUser(id) {
+  fetch(BASE_URL + "/admin/users/" + id, { method: "DELETE", headers: authHeader() })
+    .then(() => loadUsers());
+}
+
+// ===================== SHARED: STUDENTS DROPDOWN =====================
+function loadStudentsInto(selectId) {
+  fetch(BASE_URL + "/admin/users", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      const students = (d.users || []).filter(u => u.role === "student");
+      const el = document.getElementById(selectId);
+      if (!el) return;
+      el.innerHTML = students.length
+        ? students.map(s => `<option value="${s._id}">${s.name}${s.rollNo ? " (" + s.rollNo + ")" : ""}</option>`).join("")
+        : `<option value="">No students found</option>`;
+    }).catch(() => {});
+}
+
+// ===================== COURSES =====================
+// ROUTE:  GET/POST/DELETE  /api/courses  (courseRoutes.js)
+// FIELDS: title, instructor, duration, description
+// RESPONSE: { success, courses: [{_id, title, instructor, duration}] }
+function loadCourses() {
+  fetch(BASE_URL + "/courses", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      const courses = d.courses || [];
+      document.getElementById("coursesTable").innerHTML = courses.length
+        ? courses.map(c => `
+            <tr>
+              <td>${c.title || ""}</td>
+              <td>${c.instructor || "—"}</td>
+              <td>${c.duration || "—"}</td>
+              <td><button class="btn btn-danger btn-sm" onclick="deleteCourse('${c._id}')">Delete</button></td>
+            </tr>`).join("")
+        : emptyRow(4);
+    })
+    .catch(() => showMsg("courseMsg", "Failed to load courses", "error"));
+}
+
+function addCourse() {
+  const title       = document.getElementById("newCourseTitle").value.trim();
+  const instructor  = document.getElementById("newCourseInstructor").value.trim();
+  const duration    = document.getElementById("newCourseDuration").value.trim();
+  const description = document.getElementById("newCourseDesc").value.trim();
+
+  if (!title) { showMsg("courseMsg", "Course title is required", "error"); return; }
+
+  fetch(BASE_URL + "/courses", {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify({ title, instructor, duration, description })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      showMsg("courseMsg", "Course added!", "success");
+      document.getElementById("newCourseTitle").value      = "";
+      document.getElementById("newCourseInstructor").value = "";
+      document.getElementById("newCourseDuration").value   = "";
+      document.getElementById("newCourseDesc").value       = "";
+      loadCourses();
+    } else {
+      showMsg("courseMsg", d.message || "Failed to add course", "error");
+    }
+  })
+  .catch(() => showMsg("courseMsg", "Network error — is server running?", "error"));
+}
+
+function deleteCourse(id) {
+  if (!confirm("Delete this course?")) return;
+  fetch(BASE_URL + "/admin/courses/" + id, { method: "DELETE", headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { showMsg("courseMsg", "Course deleted", "success"); loadCourses(); }
+      else showMsg("courseMsg", d.message || "Delete failed", "error");
+    });
+}
+
+// ===================== ATTENDANCE =====================
+// POST  → /api/attendance  (attendanceRoutes.js)
+// GET   → /api/attendance  returns { success, records:[{studentName, courseTitle, date, status, _id}] }
+function markAttendance(status) {
+  const studentId = document.getElementById("attendanceStudent").value;
+  const courseId  = document.getElementById("attendanceCourse").value; // ✅ NEW
+  const date      = document.getElementById("attendanceDate").value;
+
+  if (!studentId) return showMsg("attendanceMsg", "Select student", "error");
+  if (!courseId)  return showMsg("attendanceMsg", "Select course", "error");
+  if (!date)      return showMsg("attendanceMsg", "Select date", "error");
+
+  fetch(BASE_URL + "/attendance", {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify({ studentId, courseId, date, status }) // ✅ FIXED
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      showMsg("attendanceMsg", "Marked " + status, "success");
+      loadAttendance();
+    } else {
+      showMsg("attendanceMsg", d.message || "Failed", "error");
+    }
+  })
+  .catch(() => showMsg("attendanceMsg", "Network error", "error"));
+}
+
+function loadAttendance() {
+  fetch(BASE_URL + "/attendance", { headers: authHeader() }) // ✅ CORRECT ROUTE
+    .then(r => r.json())
+    .then(d => {
+      const records = d.records || [];
+
+      document.getElementById("attendanceTable").innerHTML = records.length
+        ? records.map(a => `
+            <tr>
+              <td>${a.studentName || "—"}</td>
+              <td>${a.courseTitle || "N/A"}</td>
+              <td>${a.date ? new Date(a.date).toLocaleDateString() : "—"}</td>
+              <td><span class="badge ${a.status}">${a.status}</span></td>
+              <td>
+                <button class="btn btn-danger btn-sm"
+                  onclick="deleteAttendance('${a._id}')">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          `).join("")
+        : emptyRow(5);
+    })
+    .catch(() => showMsg("attendanceMsg", "Failed to load", "error"));
+}
+function loadCoursesIntoAttendance() {
+  fetch(BASE_URL + "/courses", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      console.log("COURSES RESPONSE:", d); // 🔥 debug
+
+      const courses = d.courses || [];
+      const el = document.getElementById("attendanceCourse");
+
+      el.innerHTML = courses.length
+        ? courses.map(c => `
+            <option value="${c._id}">${c.title}</option>
+          `).join("")
+        : `<option>No courses found</option>`;
+    });
+}
+
+function deleteAttendance(id) {
+  fetch(BASE_URL + "/attendance/" + id, { method: "DELETE", headers: authHeader() })
+    .then(r => r.json())
+    .then(d => { if (d.success) loadAttendance(); });
+}
+
+// ===================== REMARKS =====================
+// POST/GET/DELETE  →  /api/admin/remarks
+// GET returns { success, remarks:[{_id, studentId:{name,rollNo}, text, date}] }
+function addRemark() {
+  const studentId = document.getElementById("remarkStudent").value;
+  const text      = document.getElementById("remarkText").value.trim();
+  const date      = document.getElementById("remarkDate").value || new Date().toISOString().split("T")[0];
+
+  if (!studentId) { showMsg("remarkMsg", "Select a student", "error"); return; }
+  if (!text)      { showMsg("remarkMsg", "Enter remark text", "error"); return; }
+
+  fetch(BASE_URL + "/admin/remarks", {
+    method: "POST",
+    headers: authHeader(),
+    body: JSON.stringify({ studentId, text, date })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      showMsg("remarkMsg", "Remark submitted!", "success");
+      document.getElementById("remarkText").value = "";
+      document.getElementById("remarkDate").value = "";
+      loadRemarks();
+    } else {
+      showMsg("remarkMsg", d.message || "Failed", "error");
+    }
+  })
+  .catch(() => showMsg("remarkMsg", "Network error", "error"));
+}
+
+function loadRemarks() {
+  fetch(BASE_URL + "/admin/remarks", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      // adminRoutes.js GET /remarks returns { success, remarks:[...] }
+      const remarks = d.remarks || [];
+      document.getElementById("remarksTable").innerHTML = remarks.length
+        ? remarks.map(r => `
+            <tr>
+              <td>${r.studentId?.name || "—"}</td>
+              <td>${r.studentId?.rollNo || "—"}</td>
+              <td>${r.text || ""}</td>
+              <td>${r.date ? new Date(r.date).toLocaleDateString() : "—"}</td>
+              <td><button class="btn btn-danger btn-sm" onclick="deleteRemark('${r._id}')">Delete</button></td>
+            </tr>`).join("")
+        : emptyRow(5);
+    })
+    .catch(() => showMsg("remarkMsg", "Failed to load remarks", "error"));
+}
+
+function deleteRemark(id) {
+  fetch(BASE_URL + "/admin/remarks/" + id, { method: "DELETE", headers: authHeader() })
+    .then(r => r.json())
+    .then(d => { if (d.success) loadRemarks(); });
+}
+
+// ===================== PROJECTS =====================
+// GET  →  /api/admin/projects
+// returns { success, projects:[{_id, student:{name,rollNo,branch}, title, technologies, link, description}] }
+function loadProjects() {
+  fetch(BASE_URL + "/admin/projects", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      const projects = d.projects || [];
+      document.getElementById("projectsTable").innerHTML = projects.length
+        ? projects.map(p => `
+            <tr>
+              <td>${p.student?.name || "—"}</td>
+              <td>${p.student?.rollNo || "—"}</td>
+              <td>${p.title || "—"}</td>
+              <td>${p.technologies || "—"}</td>
+              <td>${p.link ? `<a href="${p.link}" target="_blank" style="color:#ff7a00;">View</a>` : "—"}</td>
+              <td>${p.description ? p.description.substring(0, 50) + "..." : "—"}</td>
+              <td><button class="btn btn-danger btn-sm" onclick="deleteProject('${p._id}')">Delete</button></td>
+            </tr>`).join("")
+        : emptyRow(7);
+    })
+    .catch(() => showMsg("projectMsg", "Failed to load projects", "error"));
+}
+
+function deleteProject(id) {
+  if (!confirm("Delete this project?")) return;
+  fetch(BASE_URL + "/admin/projects/" + id, { method: "DELETE", headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        showMsg("projectMsg", "Project deleted", "success");
+        loadProjects();
+      } else {
+        showMsg("projectMsg", d.message || "Delete failed", "error");
+      }
+    })
+    .catch(() => showMsg("projectMsg", "Network error", "error"));
+}
+
+// ===================== CERTIFICATIONS =====================
+// GET  →  /api/admin/certifications
+// returns { success, certifications:[{_id, studentId:{name,rollNo,branch}, course, certNo, grade, issueDate}] }
+function loadCertifications() {
+  fetch(BASE_URL + "/admin/certifications", { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      const certifications = d.certifications || [];
+      document.getElementById("certificationsTable").innerHTML = certifications.length
+        ? certifications.map(c => `
+            <tr>
+              <td>${c.studentId?.name || "—"}</td>
+              <td>${c.studentId?.rollNo || "—"}</td>
+              <td>${c.course || "—"}</td>
+              <td>${c.certNo || "—"}</td>
+              <td>${c.grade || "—"}</td>
+              <td>${c.issueDate ? new Date(c.issueDate).toLocaleDateString() : "—"}</td>
+              <td><button class="btn btn-danger btn-sm" onclick="deleteCertification('${c._id}')">Delete</button></td>
+            </tr>`).join("")
+        : emptyRow(7);
+    })
+    .catch(() => showMsg("certMsg", "Failed to load certifications", "error"));
+}
+
+function deleteCertification(id) {
+  if (!confirm("Delete this certification?")) return;
+  fetch(BASE_URL + "/admin/certifications/" + id, { method: "DELETE", headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        showMsg("certMsg", "Certification deleted", "success");
+        loadCertifications();
+      } else {
+        showMsg("certMsg", d.message || "Delete failed", "error");
+      }
+    })
+    .catch(() => showMsg("certMsg", "Network error", "error"));
+}
+
+// ===================== REPORTS =====================
+// GET  →  /api/admin/reports?type=attendance|enrollment|performance|certification
+// returns { success, report:{ columns:["Student","Course",...], data:[{student,course,...}] } }
+// Build table dynamically from columns array + Object.values(each row)
+function loadReport() {
+  const type = document.getElementById("reportType").value;
+  if (!type) { showMsg("reportMsg", "Select a report type first", "error"); return; }
+
+  document.getElementById("reportHead").innerHTML = "";
+  document.getElementById("reportBody").innerHTML = emptyRow(1, "Loading...");
+
+  fetch(BASE_URL + "/admin/reports?type=" + type, { headers: authHeader() })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.success || !d.report) {
+        showMsg("reportMsg", d.message || "Failed to generate report", "error");
+        document.getElementById("reportBody").innerHTML = emptyRow(1, "Failed to load");
+        return;
+      }
+      const { columns, data } = d.report;
+
+      // Dynamic header from columns array
+      document.getElementById("reportHead").innerHTML =
+        `<tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr>`;
+
+      // Dynamic rows — render all values in order
+      document.getElementById("reportBody").innerHTML = data.length
+        ? data.map(row => {
+            const vals = Object.values(row);
+            return `<tr>${vals.map(v => `<td>${v ?? "—"}</td>`).join("")}</tr>`;
+          }).join("")
+        : emptyRow(columns.length, "No data available for this report");
+    })
+    .catch(() => {
+      showMsg("reportMsg", "Network error — check server", "error");
+      document.getElementById("reportBody").innerHTML = emptyRow(1, "Error loading report");
+    });
+}
+
+// ===================== LOGOUT =====================
+function logout() {
+  localStorage.clear();
+  location.href = "../index.html";
+}
+
+init();
+</script>
+</body>
+</html>

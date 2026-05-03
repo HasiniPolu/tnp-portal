@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Remarks - T&P Portal</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:#0b1f3a;color:white;display:flex;min-height:100vh;}
+.sidebar{width:230px;background:#08172d;padding:25px 15px;display:flex;flex-direction:column;gap:8px;position:fixed;height:100vh;}
+.sidebar h2{font-size:18px;letter-spacing:1px;padding:10px 10px 20px;border-bottom:1px solid #1e3a6e;margin-bottom:10px;}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;color:#aac;text-decoration:none;font-size:14px;transition:0.3s;}
+.sidebar a:hover,.sidebar a.active{background:#ff7a00;color:white;}
+.sidebar .spacer{flex:1;}
+.sidebar .logout{color:#ff4444;cursor:pointer;padding:11px 14px;border-radius:10px;font-size:14px;display:flex;align-items:center;gap:10px;}
+.sidebar .logout:hover{background:#1e0000;}
+.main{margin-left:230px;flex:1;padding:30px;}
+.section-title{font-size:18px;margin:25px 0 15px;border-left:4px solid #ff7a00;padding-left:12px;}
+.form-card{background:#122c52;border-radius:14px;padding:25px;margin-bottom:25px;}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px;}
+input,select,textarea{width:100%;padding:11px;border-radius:8px;border:none;outline:none;background:#0b1f3a;color:white;}
+textarea{resize:vertical;min-height:80px;}
+.btn{padding:11px 24px;background:#ff7a00;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;}
+.btn:hover{background:#ff8f1f;}
+.msg{margin-top:10px;font-size:13px;min-height:18px;}
+.remark-card{background:#122c52;border-radius:14px;padding:20px;margin-bottom:15px;border-left:4px solid #33aaff;}
+.remark-card .meta{font-size:12px;color:#aac;margin-bottom:8px;}
+.remark-card .text{font-size:15px;}
+.admin-only{display:none;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h2>📝 T&P Portal</h2>
+  <a href="dashboard.html">🏠 Dashboard</a>
+  <a href="courses.html">📚 Courses</a>
+  <a href="attendance.html">📋 Attendance</a>
+  <a href="projects.html">💼 Projects</a>
+  <a href="certification.html">🏆 Certifications</a>
+  <a href="remarks.html" class="active">📝 Remarks</a>
+  <a href="reports.html">📊 Reports</a>
+  <div class="spacer"></div>
+  <div class="logout" onclick="logout()">🚪 Logout</div>
+</div>
+<div class="main">
+  <h1 style="font-size:24px;margin-bottom:30px;">Remarks 📝</h1>
+ 
+  <!-- ADMIN: Add Remark -->
+  <div class="admin-only" id="addRemarkSection">
+    <div class="section-title">Add Remark for Student</div>
+    <div class="form-card">
+      <div class="form-row">
+        <select id="remarkStudent"><option value="">Select Student</option></select>
+      </div>
+      <textarea id="remarkText" placeholder="Write remark here..."></textarea><br><br>
+      <button class="btn" onclick="addRemark()">📝 Add Remark</button>
+      <div class="msg" id="remarkMsg"></div>
+    </div>
+  </div>
+ 
+  <div class="section-title">Remarks</div>
+  <div id="remarksContainer">
+    <div style="color:#aac;text-align:center;">Loading...</div>
+  </div>
+</div>
+<script src="config.js"></script>
+<script>
+const user = JSON.parse(localStorage.getItem("user"));
+const token = localStorage.getItem("token");
+if(!user){ window.location.href="index.html"; }
+if(user.role==="admin"){
+  document.querySelectorAll(".admin-only").forEach(e=>e.style.display="block");
+  loadStudents();
+  loadAllRemarks();
+} else {
+  loadMyRemarks();
+}
+ 
+function authHeader(){ return {"Content-Type":"application/json","Authorization":"Bearer "+token}; }
+ 
+function loadStudents(){
+  fetch(BASE_URL+"/auth/users", { headers: authHeader() })
+  .then(r=>r.json()).then(data=>{
+    const sel = document.getElementById("remarkStudent");
+    if(data.users) data.users.filter(u=>u.role==="student").forEach(u=>{
+      sel.innerHTML += `<option value="${u._id}">${u.name}</option>`;
+    });
+  }).catch(()=>{});
+}
+ 
+function addRemark(){
+  const msg = document.getElementById("remarkMsg");
+  const body = {
+    studentId: document.getElementById("remarkStudent").value,
+    text: document.getElementById("remarkText").value.trim()
+  };
+  if(!body.studentId||!body.text){ msg.style.color="#ff4444"; msg.textContent="Fill all fields"; return; }
+  fetch(BASE_URL+"/projects/remarks", { method:"POST", headers: authHeader(), body: JSON.stringify(body) })
+  .then(r=>r.json()).then(data=>{
+    if(data.success){ msg.style.color="#00e676"; msg.textContent="Remark added ✅"; loadAllRemarks(); }
+    else { msg.style.color="#ff4444"; msg.textContent = data.message||"Failed"; }
+  }).catch(()=>{ msg.style.color="#ff4444"; msg.textContent="Server error"; });
+}
+ 
+function renderRemarks(data){
+  const container = document.getElementById("remarksContainer");
+  const remarks = data.remarks || [];
+  if(remarks.length){
+    container.innerHTML = remarks.map(r=>`
+      <div class="remark-card">
+        <div class="meta">👤 ${r.studentName||"N/A"} | 📅 ${new Date(r.createdAt||Date.now()).toLocaleDateString()} | By: ${r.addedBy||"Admin"}</div>
+        <div class="text">${r.text}</div>
+      </div>`).join("");
+  } else {
+    container.innerHTML = `<div style="color:#aac;text-align:center;">No remarks found</div>`;
+  }
+}
+ 
+function loadAllRemarks(){
+  fetch(BASE_URL+"/projects/remarks", { headers: authHeader() })
+  .then(r=>r.json()).then(renderRemarks).catch(()=>{});
+}
+ 
+function loadMyRemarks(){
+  fetch(BASE_URL+"/projects/remarks/my", { headers: authHeader() })
+  .then(r=>r.json()).then(renderRemarks).catch(()=>{});
+}
+ 
+function logout(){ localStorage.removeItem("user"); localStorage.removeItem("token"); window.location.href="index.html"; }
+</script>
+</body>
+</html>
